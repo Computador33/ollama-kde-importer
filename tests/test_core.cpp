@@ -163,6 +163,17 @@ static void testSafeModelComponentAndStagingDir() {
     CHECK(dir.contains(QStringLiteral("/ollama-kde-importer/my-model")));
 }
 
+static void testWizardSourceHasRequiredSafetySurface() {
+    QFile wiz(QStringLiteral("importwizard.cpp"));
+    CHECK(wiz.exists() && wiz.open(QIODevice::ReadOnly));
+    const QString src = QString::fromUtf8(wiz.readAll());
+    CHECK(src.contains(QStringLiteral("errorOccurred")));      // FailedToStart handled
+    CHECK(src.contains(QStringLiteral("validateCurrentPage"))); // per-page validation
+    CHECK(src.contains(QStringLiteral("terminate()")));         // graceful cancel
+    CHECK(src.contains(QStringLiteral("removeStaging")));       // cleanup on cancel/success
+    CHECK(src.contains(QStringLiteral("QDialog::accept")));     // wizard closes on completion
+}
+
 static void testRemoveStagingRemovesOnlyItsOwnDir() {
     QTemporaryDir outer;
     CHECK(outer.isValid());
@@ -192,6 +203,7 @@ int main() {
     testModelExistsErrorBlocksExistingName();
     testSafeModelComponentAndStagingDir();
     testRemoveStagingRemovesOnlyItsOwnDir();
+    testWizardSourceHasRequiredSafetySurface();
     if (g_failures) {
         std::printf("%d core test(s) FAILED\n", g_failures);
         return 1;
