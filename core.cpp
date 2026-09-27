@@ -69,6 +69,13 @@ QStringList validatePlan(const ImportPlan &plan) {
         errors << QStringLiteral("Source directory does not exist: %1").arg(plan.sourceDir);
     } else if (!QFileInfo(plan.sourceDir).isDir()) {
         errors << QStringLiteral("Source path is not a directory: %1").arg(plan.sourceDir);
+    } else if (QDir(plan.sourceDir)
+                   .entryList({QStringLiteral("*.safetensors")}, QDir::Files)
+                   .isEmpty()) {
+        // Weights can be symlinks into a cache (HF hub layout) — so no
+        // QDir::NoSymLinks here. Newer sharded checkpoints (model-00001-of-N)
+        // and LoRA adapters (adapter_model.safetensors) also match the glob.
+        errors << QStringLiteral("No .safetensors weight files found in: %1").arg(plan.sourceDir);
     }
     if (plan.modelName.trimmed().isEmpty()) {
         errors << QStringLiteral("Target Ollama model name is required.");

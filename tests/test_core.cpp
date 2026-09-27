@@ -87,9 +87,17 @@ static void testModelfileContentPerMethod() {
           QStringLiteral("FROM %1\n").arg(native.sourceDir));
 }
 
+static void touchSafetensors(const QString &dir) {
+    QFile w(dir + QStringLiteral("/model.safetensors"));
+    CHECK(w.open(QIODevice::WriteOnly));
+    w.write("dummy");
+    w.close();
+}
+
 static void testValidatePlanRules() {
     QTemporaryDir source;                               // a *real* existing dir
     CHECK(source.isValid());
+    touchSafetensors(source.path());                    // real weights like the HF cache
 
     oli::ImportPlan empty;
     CHECK(oli::validatePlan(empty).size() >= 2);                       // source dir + model name
@@ -112,6 +120,39 @@ static void testValidatePlanRules() {
     oli::ImportPlan good = planFor(oli::Method::NativeFolder);
     good.sourceDir = source.path();
     CHECK(oli::validatePlan(good).isEmpty());
+}
+
+static void testValidatePlanRejectsDirWithoutSafetensors() {
+    QTemporaryDir empty;                                // dir exists but holds no weights
+    CHECK(empty.isValid());
+
+    oli::ImportPlan full = planFor(oli::Method::FullModel);
+    full.sourceDir = empty.path();
+    const QStringList fullErrors = oli::validatePlan(full);
+    CHECK(!fullErrors.isEmpty());
+    CHECK(fullErrors.join(QLatin1Char('\n'))
+              .contains(QStringLiteral(".safetensors")));   // the new rule fires
+
+    oli::ImportPlan native = planFor(oli::Method::NativeFolder);
+    native.sourceDir = empty.path();
+    CHECK(!oli::validatePlan(native).isEmpty());
+}
+
+static void testValidatePlanAcceptsDirContainingSafetensors() {
+    QTemporaryDir dir;
+    QTemporaryDir checkout;
+    CHECK(dir.isValid() && checkout.isValid());
+    touchSafetensors(dir.path());
+
+    QFile script(checkout.path() + QStringLiteral("/convert_hf_to_gguf.py"));
+    CHECK(script.open(QIODevice::WriteOnly));
+    script.write("#!/usr/bin/env python3\n");
+    script.close();
+
+    oli::ImportPlan full = planFor(oli::Method::FullModel);
+    full.sourceDir = dir.path();
+    full.llmCppCheckout = checkout.path();
+    CHECK(oli::validatePlan(full).isEmpty());
 }
 
 static void testPreflightChecksCoverOllama() {
@@ -198,6 +239,8 @@ int main() {
     testStepArgvForLoraAndNative();
     testModelfileContentPerMethod();
     testValidatePlanRules();
+    testValidatePlanRejectsDirWithoutSafetensors();
+    testValidatePlanAcceptsDirContainingSafetensors();
     testPreflightChecksCoverOllama();
     testPreflightChecksIncludeMethod1Tools();
     testModelExistsErrorBlocksExistingName();
