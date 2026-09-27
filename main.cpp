@@ -19,7 +19,10 @@ int main(int argc, char *argv[]) {
     if (app.arguments().contains(QStringLiteral("--ui-selfcheck"))) {
         ImportWizard wizard;
         wizard.show();
-        QTimer::singleShot(600, &wizard, &QDialog::accept);
+        // Qualified base-class call: QDialog::accept closes the dialog, whereas
+        // the virtual accept() would hit ImportWizard::accept() (the Finish
+        // handler) and start an import that can never run here.
+        QTimer::singleShot(600, &wizard, [&wizard] { wizard.QDialog::accept(); });
         return app.exec();
     }
 

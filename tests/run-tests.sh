@@ -6,3 +6,7 @@ cd "$root"   # the test binary reads importwizard.cpp relative to the project ro
 cmake -S "$root" -B "$root/build" -DBUILD_TESTING=ON >/dev/null
 cmake --build "$root/build" --target test_oli_core -j"$(nproc)" >/dev/null
 "$root/build/test_oli_core"
+
+# GUI selfcheck: the wizard must open and close itself within 15s (headless).
+cmake --build "$root/build" --target ollama-kde-importer -j"$(nproc)" >/dev/null
+timeout 15 "$root/build/ollama-kde-importer" --ui-selfcheck -platform offscreen
