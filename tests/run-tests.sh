@@ -10,3 +10,6 @@ cmake --build "$root/build" --target test_oli_core -j"$(nproc)" >/dev/null
 # GUI selfcheck: the wizard must open and close itself within 15s (headless).
 cmake --build "$root/build" --target ollama-kde-importer -j"$(nproc)" >/dev/null
 timeout 15 "$root/build/ollama-kde-importer" --ui-selfcheck -platform offscreen
+
+# User-level install path: binary copy + desktop Exec substitution.
+"$root/tests/test_install.sh"

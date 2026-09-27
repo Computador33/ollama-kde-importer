@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Ollama Safetensors Importer
+Comment=Convert and import machine learning weights into Ollama
+Exec=@BINARY_PATH@
+Icon=applications-science
+Terminal=false
+Categories=Development;Science;Utility;
+Keywords=ollama;safetensors;llm;ai;kde;
