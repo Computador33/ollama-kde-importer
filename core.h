@@ -35,6 +35,7 @@ QStringList validatePlan(const ImportPlan &plan);
 std::vector<PreflightItem> preflightChecks(const ImportPlan &plan);
 std::optional<QString> modelExistsError(const QString &ollamaListOutput, const QString &modelName);
 QString safeModelComponent(const QString &modelName);
+QString stagingRoot();
 QString defaultStagingDir(const QString &modelName);
 bool removeStaging(const QString &stagingDir);
 

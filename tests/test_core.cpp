@@ -200,8 +200,11 @@ static void testModelExistsErrorBlocksExistingName() {
 static void testSafeModelComponentAndStagingDir() {
     CHECK(oli::safeModelComponent(QStringLiteral("my model/name")) == QStringLiteral("my_model_name"));
     CHECK(oli::safeModelComponent(QStringLiteral("ok-1.2")) == QStringLiteral("ok-1.2"));
-    const QString dir = oli::defaultStagingDir(QStringLiteral("my-model"));
-    CHECK(dir.contains(QStringLiteral("/ollama-kde-importer/my-model")));
+    // Staging lands exactly one level under the app cache root. CacheLocation
+    // already ends with the app name, so it must NOT be re-appended.
+    const QString root = QDir::cleanPath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+    const QString dir = QDir::cleanPath(oli::defaultStagingDir(QStringLiteral("my-model")));
+    CHECK(dir == root + QStringLiteral("/my-model"));
 }
 
 static void testWizardSourceHasRequiredSafetySurface() {
@@ -216,18 +219,21 @@ static void testWizardSourceHasRequiredSafetySurface() {
 }
 
 static void testRemoveStagingRemovesOnlyItsOwnDir() {
-    QTemporaryDir outer;
-    CHECK(outer.isValid());
-    const QString staging = outer.path() + QStringLiteral("/ollama-kde-importer/import-test");
+    QTemporaryDir outside;
+    CHECK(outside.isValid());
+    const QString root = QDir::cleanPath(QStandardPaths::writableLocation(QStandardPaths::CacheLocation));
+    const QString staging = root + QStringLiteral("/import-test"); // one level, post-fix shape
     QDir().mkpath(staging);
     QFile f(staging + QStringLiteral("/temp_f16.gguf"));
     CHECK(f.open(QIODevice::WriteOnly));
     f.write("junk");
     f.close();
-    // Refuses an absolute path that is outside an ollama-kde-importer tree:
-    CHECK(oli::removeStaging(outer.path()) == false);
+    // Refuses the cache root itself and anything that is not under it:
+    CHECK(oli::removeStaging(root) == false);
+    CHECK(oli::removeStaging(outside.path()) == false);
+    CHECK(oli::removeStaging(QDir::homePath()) == false);
     CHECK(QDir(staging).exists());
-    // Removes its own staging tree:
+    // Removes an actual staging tree one level under the cache root:
     CHECK(oli::removeStaging(staging) == true);
     CHECK(QDir(staging).exists() == false);
 }

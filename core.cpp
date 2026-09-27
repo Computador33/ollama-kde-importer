@@ -140,18 +140,28 @@ QString safeModelComponent(const QString &modelName) {
     return safe.isEmpty() ? QStringLiteral("model") : safe;
 }
 
-QString defaultStagingDir(const QString &modelName) {
+QString stagingRoot() {
     QString cache = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
     if (cache.isEmpty())
         cache = QDir::homePath() + QStringLiteral("/.cache");
-    return cache + QStringLiteral("/ollama-kde-importer/") + safeModelComponent(modelName);
+    return cache;
+}
+
+QString defaultStagingDir(const QString &modelName) {
+    // CacheLocation already ends with the app name; staging is exactly one
+    // level below it, e.g. ~/.cache/ollama-kde-importer/<model>. Never add a
+    // second app-namespaced segment on top of CacheLocation.
+    return stagingRoot() + QStringLiteral("/") + safeModelComponent(modelName);
 }
 
 bool removeStaging(const QString &stagingDir) {
     const QString path = QDir::cleanPath(stagingDir);
     if (path.isEmpty() || !QFileInfo(path).isAbsolute())
         return false;
-    if (!path.contains(QStringLiteral("/ollama-kde-importer")))
+    // Only ever recurse inside the app's own cache root (one or more levels
+    // below it), never the root itself and never anything outside it.
+    const QString root = QDir::cleanPath(stagingRoot());
+    if (!path.startsWith(root + QLatin1Char('/')))
         return false;
     return QDir(path).removeRecursively();
 }
